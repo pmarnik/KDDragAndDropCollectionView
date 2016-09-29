@@ -13,11 +13,13 @@ import UIKit
 @objc protocol KDDragAndDropCollectionViewDataSource : UICollectionViewDataSource {
     
     func collectionView(collectionView: UICollectionView, indexPathForDataItem dataItem: AnyObject) -> NSIndexPath?
-    func collectionView(collectionView: UICollectionView, dataItemForIndexPath indexPath: NSIndexPath) -> AnyObject
+    func collectionView(collectionView: UICollectionView, dataItemForIndexPath indexPath: NSIndexPath) -> AnyObject?
     
     func collectionView(collectionView: UICollectionView, moveDataItemFromIndexPath from: NSIndexPath, toIndexPath to : NSIndexPath) -> Void
     func collectionView(collectionView: UICollectionView, insertDataItem dataItem : AnyObject, atIndexPath indexPath: NSIndexPath) -> Void
     func collectionView(collectionView: UICollectionView, deleteDataItemAtIndexPath indexPath: NSIndexPath) -> Void
+    
+    func collectionView(collectionView: UICollectionView, canDropAtIndexPath indexPath: NSIndexPath) -> Bool
     
 }
 
@@ -28,7 +30,6 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     }
     
     var draggingPathOfCellBeingDragged : NSIndexPath?
-    
     var iDataSource : UICollectionViewDataSource?
     var iDelegate : UICollectionViewDelegate?
     
@@ -46,11 +47,14 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     // MARK : KDDraggable
     func canDragAtPoint(point : CGPoint) -> Bool {
         
-        guard let _ = self.dataSource as? KDDragAndDropCollectionViewDataSource else {
+        guard self.dataSource is KDDragAndDropCollectionViewDataSource else {
             return false
         }
         
-        return self.indexPathForItemAtPoint(point) != nil
+        guard indexPathForItemAtPoint(point) != nil else {
+            return false
+        }
+        return true
     }
     
     func representationImageAtPoint(point : CGPoint) -> UIView? {
@@ -60,18 +64,29 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         if let indexPath = self.indexPathForItemAtPoint(point) {
             
 			if let cell = self.cellForItemAtIndexPath(indexPath) {
+                cell.highlighted = true
 				UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.opaque, 0)
 				cell.layer.renderInContext(UIGraphicsGetCurrentContext()!)
 				let img = UIGraphicsGetImageFromCurrentImageContext()
 				UIGraphicsEndImageContext()
-				
+				cell.highlighted = false
 				imageView = UIImageView(image: img)
 				
-				imageView?.frame = cell.frame
+                
+                let frame = cell.frame
+                imageView?.frame = frame
 			}
         }
         
         return imageView
+    }
+    
+    func dragSourceRect() -> CGRect {
+        guard let currentIdx = draggingPathOfCellBeingDragged,
+              let cell = cellForItemAtIndexPath(currentIdx) else {
+            return CGRect.zero
+        }
+        return cell.frame
     }
     
     func dataItemAtPoint(point : CGPoint) -> AnyObject? {
@@ -95,6 +110,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     func startDraggingAtPoint(point : CGPoint) -> Void {
         
         self.draggingPathOfCellBeingDragged = self.indexPathForItemAtPoint(point)
+        
         
         self.reloadData()
         
@@ -147,47 +163,50 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     // MARK : KDDroppable
 
     func canDropAtRect(rect : CGRect) -> Bool {
+        guard let dataSource = dataSource as? KDDragAndDropCollectionViewDataSource else {
+            return false
+        }
+        guard let indexPath = indexPathForCellOverlappingRect(rect) else {
+            return false
+        }
         
-        return (self.indexPathForCellOverlappingRect(rect) != nil)
+        return dataSource.collectionView(self, canDropAtIndexPath: indexPath)
     }
     
     func indexPathForCellOverlappingRect( rect : CGRect) -> NSIndexPath? {
-        
-        var overlappingArea : CGFloat = 0.0
-        var cellCandidate : UICollectionViewCell?
-        
-
-        let visibleCells = self.visibleCells()
-        if visibleCells.count == 0 {
+        return nearestDropableIndexPath(indexOfNearestVisibleCellForRect(rect))
+    }
+    
+    
+    private func indexOfNearestVisibleCellForRect(rect: CGRect) -> NSIndexPath {
+        let cells = visibleCells()
+        guard !cells.isEmpty else {
             return NSIndexPath(forRow: 0, inSection: 0)
         }
-        
-        if  isHorizontal && rect.origin.x > self.contentSize.width ||
-            !isHorizontal && rect.origin.y > self.contentSize.height {
-                
-            return NSIndexPath(forRow: visibleCells.count - 1, inSection: 0)
+        let p = CGPoint(x: rect.midX, y: rect.midY)
+        return cells.map({(c: UICollectionViewCell) -> (NSIndexPath, Double) in
+            let center = c.center
+            let distance: Double = Double(sqrt(pow(center.x - p.x, 2) + pow(center.y - p.y, 2)))
+            let idx = indexPathForCell(c)
+            return (idx!, distance)
+        }).sort({$0.1 < $1.1}).first!.0
+    }
+    
+    private func nearestDropableIndexPath(indexPath: NSIndexPath?) -> NSIndexPath? {
+        guard let indexPath = indexPath,
+              let dataSource = self.dataSource as? KDDragAndDropCollectionViewDataSource else {
+            return nil
         }
-        
-        
-        for visible in visibleCells {
-            
-            let intersection = CGRectIntersection(visible.frame, rect)
-            
-            if (intersection.width * intersection.height) > overlappingArea {
-                
-                overlappingArea = intersection.width * intersection.width
-                
-                cellCandidate = visible
+        var result = indexPath
+        while(!dataSource.collectionView(self, canDropAtIndexPath: result)) {
+            result = NSIndexPath(forItem: result.item - 1, inSection: 0)
+            if (result.item < 0) {
+                return nil
             }
-            
         }
+
         
-        if let cellRetrieved = cellCandidate {
-            
-            return self.indexPathForCell(cellRetrieved)
-        }
-        
-        return nil
+        return result
     }
     
     

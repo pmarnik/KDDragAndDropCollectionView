@@ -99,6 +99,10 @@ class ViewController: UIViewController, KDDragAndDropCollectionViewDataSource {
 
     // MARK : KDDragAndDropCollectionViewDataSource
     
+    func collectionView(collectionView: UICollectionView, canDropAtIndexPath indexPath: NSIndexPath) -> Bool {
+        return true
+    }
+    
     func collectionView(collectionView: UICollectionView, dataItemForIndexPath indexPath: NSIndexPath) -> AnyObject {
         return data[collectionView.tag][indexPath.item]
     }

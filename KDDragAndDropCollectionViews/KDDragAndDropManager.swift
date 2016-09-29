@@ -13,6 +13,7 @@ import UIKit
     func representationImageAtPoint(point : CGPoint) -> UIView?
     func dataItemAtPoint(point : CGPoint) -> AnyObject?
     func dragDataItem(item : AnyObject) -> Void
+    func dragSourceRect() -> CGRect
     optional func startDraggingAtPoint(point : CGPoint) -> Void
     optional func stopDragging() -> Void
 }
@@ -26,9 +27,17 @@ import UIKit
     func dropDataItem(item : AnyObject, atRect : CGRect) -> Void
 }
 
+
+protocol KDDragAndDropManagerDelegate: class {
+    func didStartDragging(manager: KDDragAndDropManager)
+    func didEndDragging(manager: KDDragAndDropManager)
+}
+
 class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     
-    private var canvas : UIView = UIView()
+    weak var delegate: KDDragAndDropManagerDelegate?
+    
+    private weak var canvas : UIView! = UIView()
     private var views : [UIView] = []
     private var longPressGestureRecogniser = UILongPressGestureRecognizer()
     
@@ -70,11 +79,11 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         
                         representation.frame = self.canvas.convertRect(representation.frame, fromView: view)
                         
-                        representation.alpha = 0.7
+//                        representation.alpha = 0.7
                         
                         let pointOnCanvas = touch.locationInView(self.canvas)
                         
-                        let offset = CGPointMake(pointOnCanvas.x - representation.frame.origin.x, pointOnCanvas.y - representation.frame.origin.y)
+                        let offset = CGPointMake(pointOnCanvas.x - representation.center.x, pointOnCanvas.y - representation.center.y)
                         
                         if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) {
                             
@@ -118,14 +127,25 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 
             case .Began :
                 self.canvas.addSubview(bundl.representationImageView)
+                UIView.animateWithDuration(0.2, animations: {
+                    let oldCenter = bundl.representationImageView.center
+                    let newFrame = CGRectApplyAffineTransform(bundl.representationImageView.frame, CGAffineTransformMakeScale(1.31, 1.31))
+                    bundl.representationImageView.frame = newFrame
+                    bundl.representationImageView.center = oldCenter
+                    
+                    }, completion:  { _ in
+                                           })
                 sourceDraggable.startDraggingAtPoint?(pointOnSourceDraggable)
+                
+                self.delegate?.didStartDragging(self)
+
+                
                 
             case .Changed :
                 
                 // Update the frame of the representation image
-                var repImgFrame = bundl.representationImageView.frame
-                repImgFrame.origin = CGPointMake(pointOnCanvas.x - bundl.offset.x, pointOnCanvas.y - bundl.offset.y);
-                bundl.representationImageView.frame = repImgFrame
+     
+                bundl.representationImageView.center = CGPointMake(pointOnCanvas.x - bundl.offset.x, pointOnCanvas.y - bundl.offset.y)
                 
                 var overlappingArea : CGFloat = 0.0
                 
@@ -158,17 +178,20 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     
                 }
                 
-                
+                if !(mainOverView is KDDroppable) {
+                    mainOverView = bundle?.sourceDraggableView
+                }
                 
                 if let droppable = mainOverView as? KDDroppable {
                     
                     let rect = self.canvas.convertRect(bundl.representationImageView.frame, toView: mainOverView)
+
                     
                     if droppable.canDropAtRect(rect) {
                         
                         if mainOverView != bundl.overDroppableView { // if it is the first time we are entering
                             
-                            (bundl.overDroppableView as! KDDroppable).didMoveOutItem(bundl.dataItem)
+                            (bundl.overDroppableView as? KDDroppable)?.didMoveOutItem(bundl.dataItem)
                             droppable.willMoveItem(bundl.dataItem, inRect: rect)
                             
                         }
@@ -186,9 +209,9 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                
             case .Ended :
                 
+                var dropRect: CGRect?
+                
                 if bundl.sourceDraggableView != bundl.overDroppableView { // if we are actually dropping over a new view.
-                    
-                    print("\(bundl.overDroppableView?.tag)")
                     
                     if let droppable = bundl.overDroppableView as? KDDroppable {
                         
@@ -198,12 +221,24 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         
                         droppable.dropDataItem(bundl.dataItem, atRect: rect)
                         
+                        dropRect = findDropRect()
                     }
                 }
                 
+                if dropRect == nil {
+                    dropRect = sourceDraggable.dragSourceRect()
+                    dropRect = canvas.convertRect(dropRect!, fromView: (sourceDraggable as! UIView))
+                }
+                UIView.animateWithDuration(0.3, animations: {
+                    bundl.representationImageView.frame = dropRect!
+                    }, completion: { [weak self] (_) in
+                        bundl.representationImageView.removeFromSuperview()
+                        sourceDraggable.stopDragging?()
+                        if let _self = self {
+                            _self.delegate?.didEndDragging(_self)
+                        }
+                })
                 
-                bundl.representationImageView.removeFromSuperview()
-                sourceDraggable.stopDragging?()
                 
             default:
                 break
@@ -215,6 +250,17 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         
         
         
+    }
+    
+    private func findDropRect() -> CGRect? {
+        guard let bundl = bundle, let targetView = bundl.overDroppableView else {
+            return nil
+        }
+        let reprRect = self.canvas.convertRect(bundl.representationImageView.frame, toView: targetView)
+        let targetRect = targetView.bounds
+        var common = CGRectIntersection(reprRect, targetRect)
+        common = targetView.convertRect(common, toView: canvas)
+        return CGRect(x: common.midX, y: common.midY, width: 0, height: 0)
     }
     
     // MARK: Helper Methods 
