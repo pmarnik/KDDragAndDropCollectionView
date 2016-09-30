@@ -86,8 +86,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         
                         let offset = CGPointMake(pointOnCanvas.x - representation.center.x, pointOnCanvas.y - representation.center.y)
                         
-                        if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) {
-                            
+                        if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) where self.bundle == nil {
                             self.bundle = Bundle(
                                 offset: offset,
                                 sourceDraggableView: view,
@@ -208,7 +207,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 }
                 
                
-            case .Ended :
+            case .Ended, .Cancelled :
                 
                 var dropRect: CGRect?
                 
@@ -238,6 +237,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         sourceDraggable.stopDragging?()
                         if let _self = self {
                             _self.delegate?.didEndDragging(_self)
+                            _self.bundle = nil
                         }
                 })
                 
