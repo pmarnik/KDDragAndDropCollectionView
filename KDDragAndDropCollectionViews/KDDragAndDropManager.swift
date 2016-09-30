@@ -8,7 +8,7 @@
 
 import UIKit
 
-@objc protocol KDDraggable {
+@objc public protocol KDDraggable {
     func canDragAtPoint(point : CGPoint) -> Bool
     func representationImageAtPoint(point : CGPoint) -> UIView?
     func dataItemAtPoint(point : CGPoint) -> AnyObject?
@@ -20,7 +20,7 @@ import UIKit
 }
 
 
-@objc protocol KDDroppable {
+@objc public protocol KDDroppable {
     func canDropAtRect(rect : CGRect) -> Bool
     func willMoveItem(item : AnyObject, inRect rect : CGRect) -> Void
     func didMoveItem(item : AnyObject, inRect rect : CGRect) -> Void
@@ -29,14 +29,14 @@ import UIKit
 }
 
 
-protocol KDDragAndDropManagerDelegate: class {
+public protocol KDDragAndDropManagerDelegate: class {
     func didStartDragging(manager: KDDragAndDropManager)
     func didEndDragging(manager: KDDragAndDropManager)
 }
 
-class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
+public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     
-    weak var delegate: KDDragAndDropManagerDelegate?
+    public weak var delegate: KDDragAndDropManagerDelegate?
     
     private weak var canvas : UIView! = UIView()
     private var views : [UIView] = []
@@ -52,7 +52,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
     }
     var bundle : Bundle?
     
-    init(canvas : UIView, collectionViews : [UIView]) {
+    public init(canvas : UIView, collectionViews : [UIView]) {
         
         super.init()
         
@@ -66,7 +66,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         self.views = collectionViews
     }
     
-    func gestureRecognizer(gestureRecognizer: UIGestureRecognizer, shouldReceiveTouch touch: UITouch) -> Bool {
+    public func gestureRecognizer(gestureRecognizer: UIGestureRecognizer, shouldReceiveTouch touch: UITouch) -> Bool {
         
         for view in self.views.filter({ v -> Bool in v is KDDraggable})  {
             
@@ -87,6 +87,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         let offset = CGPointMake(pointOnCanvas.x - representation.center.x, pointOnCanvas.y - representation.center.y)
                         
                         if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) where self.bundle == nil {
+                            print("start")
                             self.bundle = Bundle(
                                 offset: offset,
                                 sourceDraggableView: view,

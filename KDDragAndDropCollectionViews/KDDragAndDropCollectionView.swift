@@ -10,7 +10,7 @@ import UIKit
 
 
 
-@objc protocol KDDragAndDropCollectionViewDataSource : UICollectionViewDataSource {
+@objc public protocol KDDragAndDropCollectionViewDataSource : UICollectionViewDataSource {
     
     func collectionView(collectionView: UICollectionView, indexPathForDataItem dataItem: AnyObject) -> NSIndexPath?
     func collectionView(collectionView: UICollectionView, dataItemForIndexPath indexPath: NSIndexPath) -> AnyObject?
@@ -23,13 +23,13 @@ import UIKit
     
 }
 
-class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
+public class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
 
-    required init?(coder aDecoder: NSCoder) {
+    public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
     
-    var draggingPathOfCellBeingDragged : NSIndexPath?
+    public var draggingPathOfCellBeingDragged : NSIndexPath?
     var iDataSource : UICollectionViewDataSource?
     var iDelegate : UICollectionViewDelegate?
     
@@ -37,19 +37,19 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     var currentRect: CGRect?
     var timer: CADisplayLink?
     
-    override func awakeFromNib() {
+    override public func awakeFromNib() {
         super.awakeFromNib()
      
     }
     
-    override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
+    override public init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
         super.init(frame: frame, collectionViewLayout: layout)
     
     }
     
 
     // MARK : KDDraggable
-    func canDragAtPoint(point : CGPoint) -> Bool {
+    public func canDragAtPoint(point : CGPoint) -> Bool {
         
         guard self.dataSource is KDDragAndDropCollectionViewDataSource else {
             return false
@@ -61,7 +61,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         return true
     }
     
-    func representationImageAtPoint(point : CGPoint) -> UIView? {
+    public func representationImageAtPoint(point : CGPoint) -> UIView? {
         
         var imageView : UIView?
         
@@ -85,7 +85,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         return imageView
     }
     
-    func dragSourceRect() -> CGRect {
+    public func dragSourceRect() -> CGRect {
         guard let currentIdx = draggingPathOfCellBeingDragged,
               let cell = cellForItemAtIndexPath(currentIdx) else {
             return CGRect.zero
@@ -93,7 +93,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         return cell.frame
     }
     
-    func dataItemAtPoint(point : CGPoint) -> AnyObject? {
+    public func dataItemAtPoint(point : CGPoint) -> AnyObject? {
         
         var dataItem : AnyObject?
         
@@ -111,7 +111,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     
     
     
-    func startDraggingAtPoint(point : CGPoint) -> Void {
+    public func startDraggingAtPoint(point : CGPoint) -> Void {
         
         self.draggingPathOfCellBeingDragged = self.indexPathForItemAtPoint(point)
         
@@ -120,11 +120,11 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         
     }
     
-    func willStopDragging() {
+    public func willStopDragging() {
         stopTimer()
     }
     
-    func stopDragging() -> Void {
+    public func stopDragging() -> Void {
         if let idx = self.draggingPathOfCellBeingDragged {
             if let cell = self.cellForItemAtIndexPath(idx) {
                 cell.hidden = false
@@ -136,7 +136,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         self.reloadData()
     }
     
-    func dragDataItem(item : AnyObject) -> Void {
+    public func dragDataItem(item : AnyObject) -> Void {
         
         if let dragDropDataSource = self.dataSource as? KDDragAndDropCollectionViewDataSource {
             
@@ -168,7 +168,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     
     // MARK : KDDroppable
 
-    func canDropAtRect(rect : CGRect) -> Bool {
+    public func canDropAtRect(rect : CGRect) -> Bool {
         guard let dataSource = dataSource as? KDDragAndDropCollectionViewDataSource else {
             return false
         }
@@ -231,7 +231,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     
     
     private var currentInRect : CGRect?
-    func willMoveItem(item : AnyObject, inRect rect : CGRect) -> Void {
+    public func willMoveItem(item : AnyObject, inRect rect : CGRect) -> Void {
         
         let dragDropDataSource = self.dataSource as! KDDragAndDropCollectionViewDataSource // its guaranteed to have a data source
         
@@ -278,7 +278,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     var animating: Bool = false
     
        
-    func didMoveItem(item : AnyObject, inRect rect : CGRect) -> Void {
+    public func didMoveItem(item : AnyObject, inRect rect : CGRect) -> Void {
         
         moveItem(item, atRect: rect)
         
@@ -432,7 +432,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         timer = nil
     }
     
-    func didMoveOutItem(item : AnyObject) -> Void {
+    public func didMoveOutItem(item : AnyObject) -> Void {
         stopTimer()
         
         guard let dragDropDataSource = self.dataSource as? KDDragAndDropCollectionViewDataSource,
@@ -470,7 +470,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     }
     
     
-    func dropDataItem(item : AnyObject, atRect : CGRect) -> Void {
+    public func dropDataItem(item : AnyObject, atRect : CGRect) -> Void {
         
         // show hidden cell
         if  let index = draggingPathOfCellBeingDragged,
