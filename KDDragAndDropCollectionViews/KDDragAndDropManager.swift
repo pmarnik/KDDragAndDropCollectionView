@@ -16,6 +16,7 @@ import UIKit
     func dragSourceRect() -> CGRect
     optional func startDraggingAtPoint(point : CGPoint) -> Void
     optional func stopDragging() -> Void
+    optional func willStopDragging() -> Void
 }
 
 
@@ -229,6 +230,7 @@ class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     dropRect = sourceDraggable.dragSourceRect()
                     dropRect = canvas.convertRect(dropRect!, fromView: (sourceDraggable as! UIView))
                 }
+                sourceDraggable.willStopDragging?()
                 UIView.animateWithDuration(0.3, animations: {
                     bundl.representationImageView.frame = dropRect!
                     }, completion: { [weak self] (_) in

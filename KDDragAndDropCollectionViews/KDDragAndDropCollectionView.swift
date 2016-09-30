@@ -35,7 +35,7 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     
     var currentItem: AnyObject?
     var currentRect: CGRect?
-    var timer: NSTimer?
+    var timer: CADisplayLink?
     
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -120,8 +120,11 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         
     }
     
+    func willStopDragging() {
+        stopTimer()
+    }
+    
     func stopDragging() -> Void {
-        
         if let idx = self.draggingPathOfCellBeingDragged {
             if let cell = self.cellForItemAtIndexPath(idx) {
                 cell.hidden = false
@@ -131,8 +134,6 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         self.draggingPathOfCellBeingDragged = nil
         
         self.reloadData()
-        timer?.invalidate()
-        timer = nil
     }
     
     func dragDataItem(item : AnyObject) -> Void {
@@ -190,7 +191,18 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         }
         let p = CGPoint(x: rect.midX, y: rect.midY)
         
-        let (idx, _) = cells.map({(c: UICollectionViewCell) -> (NSIndexPath, Double) in
+        let (idx, _) = cells
+            .filter({ (c: UICollectionViewCell) -> Bool in
+                let area = c.frame.width * c.frame.height
+                let rect = superview!.convertRect(c.frame, fromView: self)
+                let overlap = CGRectIntersection(rect, frame)
+                let overlapArea = overlap.width * overlap.height
+                if overlapArea < area/3 {
+                    return false
+                }
+                return true
+            })
+            .map({(c: UICollectionViewCell) -> (NSIndexPath, Double) in
             let center = c.center
             
             let distance: Double = Double(sqrt(pow(center.x - p.x, 2) + pow(center.y - p.y, 2)))
@@ -278,10 +290,12 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         normalizedRect.origin.x -= self.contentOffset.x
         normalizedRect.origin.y -= self.contentOffset.y
         
+        
         currentInRect = normalizedRect
+        self.currentRect = rect
         
         
-        self.checkForEdge2(normalizedRect)
+        self.checkForEdge(rect)
         
     }
     
@@ -319,15 +333,31 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
     
  
     
-    func checkForEdge2(rect: CGRect) {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        var bounds = self.bounds
-        bounds.origin = CGPoint.zero
-        if !bounds.contains(center) {
-           startTimer()
+    func checkForEdge(rect: CGRect) {
+        if outsideDistance(rect) > 0.2 {
+            startTimer()
         } else {
             stopTimer()
         }
+    }
+    
+    private func outsideDistance(rect: CGRect) -> CGFloat {
+        var bounds = self.bounds
+        bounds.origin = CGPoint.zero
+        var outside: CGFloat = 0
+        var translatedRect = rect
+        translatedRect.origin.x -= contentOffset.x
+        translatedRect.origin.y -= contentOffset.y
+        if isHorizontal {
+            let rightOutside =  translatedRect.maxX - bounds.width
+            outside = max(-translatedRect.minX, rightOutside)/translatedRect.width
+        } else {
+            outside = max(-translatedRect.minY, translatedRect.maxY - bounds.height)/translatedRect.height
+        }
+        if (outside > 1) {
+            outside = 1
+        }
+        return outside
     }
     
     
@@ -362,9 +392,9 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
             return CGPoint.zero
         }
         
-        var stepX = 0
-        var stepY = 0
-        let stepSize = 5
+        var stepX: CGFloat = 0
+        var stepY: CGFloat = 0
+        let stepSize: CGFloat = 15 * outsideDistance(currentRect)
         let rect = superview!.convertRect(currentRect, fromView: self)
         if isHorizontal {
             if (rect.minX < frame.minX) {
@@ -390,7 +420,10 @@ class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDroppable {
         guard timer == nil  else {
             return
         }
-        timer = NSTimer.scheduledTimerWithTimeInterval(1.0/30.0, target: self, selector: #selector(actionTimer), userInfo: nil, repeats: true)
+        timer = CADisplayLink(target: self, selector: #selector(actionTimer))
+        timer!.addToRunLoop(NSRunLoop.mainRunLoop(), forMode: NSRunLoopCommonModes)
+
+//        timer = NSTimer.scheduledTimerWithTimeInterval(1.0/30.0, target: self, selector: #selector(actionTimer), userInfo: nil, repeats: true)
         
     }
     
