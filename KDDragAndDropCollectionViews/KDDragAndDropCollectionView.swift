@@ -296,6 +296,7 @@ public class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDropp
         
         
         self.checkForEdge(rect)
+//        self.checkForEdgesAndScroll(normalizedRect)
         
     }
     
@@ -312,20 +313,19 @@ public class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDropp
                 dragDropDS.collectionView(self, moveDataItemFromIndexPath: existingIndexPath, toIndexPath: indexPath)
                 
                 self.animating = true
+                self.draggingPathOfCellBeingDragged = indexPath
                 
                 self.performBatchUpdates({ () -> Void in
-                    
+                  
                     self.moveItemAtIndexPath(existingIndexPath, toIndexPath: indexPath)
                     
                     }, completion: { (finished) -> Void in
                         
                         self.animating = false
-                        
-                        self.reloadData()
-                        
                 })
                 
-                self.draggingPathOfCellBeingDragged = indexPath
+                
+                
                 
             }
         }
@@ -340,6 +340,63 @@ public class KDDragAndDropCollectionView: UICollectionView, KDDraggable, KDDropp
             stopTimer()
         }
     }
+    
+    
+    var paging : Bool = false
+    func checkForEdgesAndScroll(rect : CGRect) -> Void {
+        
+        if paging == true {
+            return
+        }
+        
+        let currentRect : CGRect = CGRect(x: self.contentOffset.x, y: self.contentOffset.y, width: self.bounds.size.width, height: self.bounds.size.height)
+        var rectForNextScroll : CGRect = currentRect
+        
+        if isHorizontal {
+            
+            let leftBoundary = CGRect(x: -30.0, y: 0.0, width: 30.0, height: self.frame.size.height)
+            let rightBoundary = CGRect(x: self.frame.size.width, y: 0.0, width: 30.0, height: self.frame.size.height)
+            
+            if CGRectIntersectsRect(rect, leftBoundary) == true {
+                rectForNextScroll.origin.x -= self.bounds.size.width * 0.5
+                if rectForNextScroll.origin.x < 0 {
+                    rectForNextScroll.origin.x = 0
+                }
+            }
+            else if CGRectIntersectsRect(rect, rightBoundary) == true {
+                rectForNextScroll.origin.x += self.bounds.size.width * 0.5
+                if rectForNextScroll.origin.x > self.contentSize.width - self.bounds.size.width {
+                    rectForNextScroll.origin.x = self.contentSize.width - self.bounds.size.width
+                }
+            }
+            
+        } else { // is vertical
+            
+            let topBoundary = CGRect(x: 0.0, y: -30.0, width: self.frame.size.width, height: 30.0)
+            let bottomBoundary = CGRect(x: 0.0, y: self.frame.size.height, width: self.frame.size.width, height: 30.0)
+            
+            if CGRectIntersectsRect(rect, topBoundary) == true {
+                
+            }
+            else if CGRectIntersectsRect(rect, bottomBoundary) == true {
+                
+            }
+        }
+        
+        // check to see if a change in rectForNextScroll has been made
+        if CGRectEqualToRect(currentRect, rectForNextScroll) == false {
+            self.paging = true
+            self.scrollRectToVisible(rectForNextScroll, animated: true)
+            
+            let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * Double(NSEC_PER_SEC)))
+            dispatch_after(delayTime, dispatch_get_main_queue()) {
+                self.paging = false
+            }
+            
+        }
+        
+    }
+
     
     private func outsideDistance(rect: CGRect) -> CGFloat {
         var bounds = self.bounds
