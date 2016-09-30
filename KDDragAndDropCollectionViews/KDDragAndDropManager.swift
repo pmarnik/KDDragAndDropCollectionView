@@ -51,6 +51,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
         var dataItem : AnyObject
     }
     var bundle : Bundle?
+    private var dragInProgress: Bool = false
     
     public init(canvas : UIView, collectionViews : [UIView]) {
         
@@ -86,8 +87,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                         
                         let offset = CGPointMake(pointOnCanvas.x - representation.center.x, pointOnCanvas.y - representation.center.y)
                         
-                        if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) where self.bundle == nil {
-                            print("start")
+                        if let dataItem : AnyObject = draggable.dataItemAtPoint(touchPointInView) where !dragInProgress {
                             self.bundle = Bundle(
                                 offset: offset,
                                 sourceDraggableView: view,
@@ -127,6 +127,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 
                 
             case .Began :
+                dragInProgress = true
                 self.canvas.addSubview(bundl.representationImageView)
                 UIView.animateWithDuration(0.2, animations: {
                     let oldCenter = bundl.representationImageView.center
@@ -209,6 +210,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                 
                
             case .Ended, .Cancelled :
+                dragInProgress = false
                 
                 var dropRect: CGRect?
                 
