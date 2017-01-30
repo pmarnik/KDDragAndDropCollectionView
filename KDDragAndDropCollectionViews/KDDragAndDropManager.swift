@@ -172,7 +172,7 @@ public class KDDragAndDropManager: NSObject, UIGestureRecognizerDelegate {
                     
                     if (intersectionNew.width * intersectionNew.height) > overlappingArea {
                         
-                        overlappingArea = intersectionNew.width * intersectionNew.width
+                        overlappingArea = intersectionNew.width * intersectionNew.height
                         
                         mainOverView = view
                     }
